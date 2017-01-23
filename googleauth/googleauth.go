@@ -11,9 +11,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/gin-gonic/contrib/sessions"
-	"github.com/gin-gonic/gin"
+	"github.com/gin-contrib/sessions"
 	"github.com/golang/glog"
+	"gopkg.in/gin-gonic/gin.v1"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
