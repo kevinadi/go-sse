@@ -77,10 +77,8 @@ func LoginHandler(ctx *gin.Context) {
 	state = randToken()
 	session := sessions.Default(ctx)
 	session.Set("state", state)
-	session.Set("blah", "blah1")
 	session.Save()
-	fmt.Println("LOGIN SESSION:", session.Get("blah"))
-	fmt.Println("LOGIN SESSION:", session.Get("user"))
+	fmt.Println("LOGIN SESSION:", session.Get("userid"))
 	ctx.Writer.Write([]byte("<html><title>Golang Google</title> <body> <h3>Hello!</h3> <a href='" + GetLoginURL(state) + "'><button>Login with Google!</button> </a> </body></html>"))
 }
 
@@ -103,7 +101,6 @@ func Auth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Handle the exchange code to initiate a transport.
 		session := sessions.Default(ctx)
-		fmt.Println("BEFORE AUTH SESSION:", session)
 		retrievedState := session.Get("state")
 		fmt.Println("RETRIEVED STATE:", retrievedState)
 
@@ -113,6 +110,8 @@ func Auth() gin.HandlerFunc {
 			return
 		}
 
+		sessionUserID := session.Get("userid")
+		fmt.Println("SESSION USER ID:", sessionUserID)
 		sessionUser := session.Get("user")
 		fmt.Println("SESSION USER:", sessionUser)
 		ctxKeys := ctx.Keys
@@ -154,10 +153,13 @@ func Auth() gin.HandlerFunc {
 		// save userinfo, which could be used in Handlers
 		ctx.Set("user", user)
 		session.Set("user", user)
-		session.Set("foobar", "foobar1")
-		fmt.Println("AFTER AUTH SESSION:", session.Get("foobar"))
+		session.Set("username", user.Name)
+		session.Set("userid", user.Email)
 		session.Save()
-		fmt.Println("AFTER AUTH SESSION:", session.Get("user"))
+
+		fmt.Println("AFTER AUTH SESSION user:", session.Get("user"))
+		fmt.Println("AFTER AUTH SESSION userid:", session.Get("userid"))
+		fmt.Println("AFTER AUTH SESSION username:", session.Get("username"))
 
 		ctx.SetCookie("user", user.Email, 60, "/", "127.0.0.1", false, true)
 	}

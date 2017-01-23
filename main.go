@@ -47,7 +47,7 @@ func main() {
 	router.Use(googleauth.Session(sessionName))
 
 	router.GET("/", rootHandler)
-	router.GET("/login", googleauth.LoginHandler)
+	router.GET("/auth/login", googleauth.LoginHandler)
 
 	// protected url group
 	private := router.Group("/auth")
@@ -56,9 +56,8 @@ func main() {
 	private.GET("/info", userInfoHandler)
 	private.GET("/api", func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
-		fmt.Println("API SESSION:", session.Get("user"))
-		user, found := ctx.Get("user")
-		fmt.Println("User:", user, "Found:", found)
+		fmt.Println("API SESSION user:", session.Get("user"))
+		fmt.Println("API SESSION userid:", session.Get("userid"))
 		ctx.JSON(200, gin.H{"message": "Hello from private for groups"})
 	})
 
@@ -68,13 +67,20 @@ func main() {
 func userInfoHandler(ctx *gin.Context) {
 	session := sessions.Default(ctx)
 	fmt.Println("Keys:", ctx.Keys)
-	fmt.Println("USERINFO SESSION:", session.Get("user"))
+	fmt.Println("USERINFO SESSION user:", session.Get("user"))
+	fmt.Println("USERINFO SESSION userid:", session.Get("userid"))
 
-	user, _ := ctx.GetCookie("user")
-	fmt.Println("USERINFO COOKIE:", user)
+	// user, _ := ctx.GetCookie("user")
+	// fmt.Println("USERINFO COOKIE:", user)
+
 	// user := ctx.MustGet("user")
 	// if user != nil {
-	ctx.JSON(http.StatusOK, gin.H{"Hello": "from private", "user": ctx.MustGet("user").(googleauth.User), "Ctx Keys:": ctx.Keys})
+
+	ctxuser, _ := ctx.Get("user")
+	userinfo := ctxuser.(googleauth.User)
+	ctx.JSON(http.StatusOK, gin.H{"Hello": "from private", "user": userinfo})
+
+	// ctx.JSON(http.StatusOK, gin.H{"Hello": "from private", "user": ctx.MustGet("user").(googleauth.User), "Ctx Keys:": ctx.Keys})
 	// } else {
 	// 	ctx.String(http.StatusOK, "Please login")
 	// }
@@ -99,11 +105,21 @@ func randToken() string {
 }
 
 func rootHandler(ctx *gin.Context) {
-	cuser, cusererr := ctx.Cookie("user")
-	fmt.Println("ROOT COOKIE:", cuser)
-	if cusererr == nil {
-		ctx.String(http.StatusOK, "Hello %s", cuser)
-	} else {
-		ctx.String(http.StatusOK, "Hello unknown person")
-	}
+	// cuser, cusererr := ctx.Cookie("user")
+	// fmt.Println("ROOT COOKIE:", cuser)
+	// if cusererr == nil {
+	// 	ctx.String(http.StatusOK, "Hello %s", cuser)
+	// } else {
+	// 	ctx.String(http.StatusOK, "Hello unknown person")
+	// }
+
+	session := sessions.Default(ctx)
+	user := session.Get("user")
+	username := session.Get("username")
+	userid := session.Get("userid")
+	ctx.String(http.StatusOK, "Hello %s %s", username, userid)
+
+	fmt.Println("ROOT user", user)
+	fmt.Println("ROOT username", username)
+	fmt.Println("ROOT userid", userid)
 }
