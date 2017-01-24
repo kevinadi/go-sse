@@ -42,9 +42,12 @@ func main() {
 
 	router := gin.Default()
 	// init settings for google auth
-	googleauth.Setup(redirectURL, credFile, scopes, secret)
+	googleauth.Setup(redirectURL, credFile, scopes)
 	fmt.Println("Credfile:", credFile)
-	router.Use(googleauth.Session(sessionName))
+
+	// router.Use(googleauth.Session(sessionName))
+	store := sessions.NewCookieStore(secret)
+	router.Use(sessions.Sessions(sessionName, store))
 
 	router.GET("/", rootHandler)
 	router.GET("/auth/login", googleauth.LoginHandler)
@@ -52,11 +55,12 @@ func main() {
 	// protected url group
 	private := router.Group("/auth")
 	private.Use(googleauth.Auth())
-	private.GET("/", userInfoHandler)
+	private.GET("/", rootHandler)
 	private.GET("/info", userInfoHandler)
 	private.GET("/api", func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 		fmt.Println("API SESSION user:", session.Get("user"))
+		fmt.Println("API SESSION username:", session.Get("username"))
 		fmt.Println("API SESSION userid:", session.Get("userid"))
 		ctx.JSON(200, gin.H{"message": "Hello from private for groups"})
 	})
@@ -66,9 +70,12 @@ func main() {
 
 func userInfoHandler(ctx *gin.Context) {
 	session := sessions.Default(ctx)
-	fmt.Println("Keys:", ctx.Keys)
+	// ctxuser, _ := ctx.Get("user")
+	// fmt.Println("CTX user:", ctxuser)
 	fmt.Println("USERINFO SESSION user:", session.Get("user"))
 	fmt.Println("USERINFO SESSION userid:", session.Get("userid"))
+	fmt.Println("USERINFO SESSION username:", session.Get("username"))
+	fmt.Println("USERINFO SESSION blah:", session.Get("blah"))
 
 	// user, _ := ctx.GetCookie("user")
 	// fmt.Println("USERINFO COOKIE:", user)
@@ -76,9 +83,8 @@ func userInfoHandler(ctx *gin.Context) {
 	// user := ctx.MustGet("user")
 	// if user != nil {
 
-	ctxuser, _ := ctx.Get("user")
-	userinfo := ctxuser.(googleauth.User)
-	ctx.JSON(http.StatusOK, gin.H{"Hello": "from private", "user": userinfo})
+	// userinfo := ctxuser.(googleauth.User)
+	ctx.JSON(http.StatusOK, gin.H{"Hello": "from private info", "user": session.Get("username")})
 
 	// ctx.JSON(http.StatusOK, gin.H{"Hello": "from private", "user": ctx.MustGet("user").(googleauth.User), "Ctx Keys:": ctx.Keys})
 	// } else {
@@ -114,12 +120,15 @@ func rootHandler(ctx *gin.Context) {
 	// }
 
 	session := sessions.Default(ctx)
-	user := session.Get("user")
+	// user := session.Get("user")
 	username := session.Get("username")
 	userid := session.Get("userid")
 	ctx.String(http.StatusOK, "Hello %s %s", username, userid)
 
-	fmt.Println("ROOT user", user)
+	// fmt.Println("ROOT user", user)
+	fmt.Println("ROOTHANDLER ===")
+	fmt.Println("ROOT state", session.Get("state"))
 	fmt.Println("ROOT username", username)
 	fmt.Println("ROOT userid", userid)
+	fmt.Println("ROOT blah:", session.Get("blah"))
 }

@@ -42,7 +42,8 @@ type User struct {
 var cred Credentials
 var conf *oauth2.Config
 var state string
-var store sessions.CookieStore
+
+// var store sessions.CookieStore
 
 func randToken() string {
 	b := make([]byte, 32)
@@ -51,8 +52,24 @@ func randToken() string {
 }
 
 // Setup the authorization path
-func Setup(redirectURL, credFile string, scopes []string, secret []byte) {
-	store = sessions.NewCookieStore(secret)
+// func Setup(redirectURL, credFile string, scopes []string, secret []byte) {
+// 	store = sessions.NewCookieStore(secret)
+// 	var c Credentials
+// 	file, err := ioutil.ReadFile(credFile)
+// 	if err != nil {
+// 		glog.Fatalf("[Gin-OAuth] File error: %v\n", err)
+// 	}
+// 	json.Unmarshal(file, &c)
+
+// 	conf = &oauth2.Config{
+// 		ClientID:     c.ClientID,
+// 		ClientSecret: c.ClientSecret,
+// 		RedirectURL:  redirectURL,
+// 		Scopes:       scopes,
+// 		Endpoint:     google.Endpoint,
+// 	}
+// }
+func Setup(redirectURL, credFile string, scopes []string) {
 	var c Credentials
 	file, err := ioutil.ReadFile(credFile)
 	if err != nil {
@@ -69,9 +86,9 @@ func Setup(redirectURL, credFile string, scopes []string, secret []byte) {
 	}
 }
 
-func Session(name string) gin.HandlerFunc {
-	return sessions.Sessions(name, store)
-}
+// func Session(name string) gin.HandlerFunc {
+// 	return sessions.Sessions(name, store)
+// }
 
 func LoginHandler(ctx *gin.Context) {
 	state = randToken()
@@ -102,11 +119,17 @@ func Auth() gin.HandlerFunc {
 		// Handle the exchange code to initiate a transport.
 		session := sessions.Default(ctx)
 		retrievedState := session.Get("state")
-		fmt.Println("RETRIEVED STATE:", retrievedState)
+		fmt.Println("AUTH: RETRIEVED STATE:", retrievedState)
+		fmt.Println("AUTH: SESSION username:", session.Get("username"))
+		fmt.Println("AUTH: SESSION userid:", session.Get("userid"))
+		fmt.Println("AUTH: SESSION blah:", session.Get("blah"))
 
-		cuser, cusererr := ctx.Cookie("user")
-		fmt.Println("COOKIE USER:", cuser)
-		if cusererr == nil {
+		// cuser, cusererr := ctx.Cookie("user")
+		// fmt.Println("AUTH: COOKIE USER:", cuser)
+		// if cusererr == nil {
+		// 	return
+		// }
+		if session.Get("userid") != nil {
 			return
 		}
 
@@ -155,12 +178,15 @@ func Auth() gin.HandlerFunc {
 		session.Set("user", user)
 		session.Set("username", user.Name)
 		session.Set("userid", user.Email)
+		session.Set("blah", "blah1")
 		session.Save()
 
 		fmt.Println("AFTER AUTH SESSION user:", session.Get("user"))
 		fmt.Println("AFTER AUTH SESSION userid:", session.Get("userid"))
 		fmt.Println("AFTER AUTH SESSION username:", session.Get("username"))
+		fmt.Println("AFTER AUTH SESSION blah:", session.Get("blah"))
 
-		ctx.SetCookie("user", user.Email, 60, "/", "127.0.0.1", false, true)
+		ctx.SetCookie("user", user.Email, 300, "/", "127.0.0.1", false, true)
+
 	}
 }
