@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"flag"
 	"fmt"
 	"net/http"
@@ -16,6 +14,8 @@ import (
 )
 
 var redirectURL, credFile string
+
+// var store = sessions.NewCookieStore([]byte("secret"))
 
 func init() {
 	bin := path.Base(os.Args[0])
@@ -38,7 +38,7 @@ func main() {
 		// You have to select your own scope from here -> https://developers.google.com/identity/protocols/googlescopes#google_sign-in
 	}
 	secret := []byte("secret")
-	sessionName := "Go-sse"
+	sessionName := "Go-sse-x"
 
 	router := gin.Default()
 	// init settings for google auth
@@ -55,17 +55,21 @@ func main() {
 	// protected url group
 	private := router.Group("/auth")
 	private.Use(googleauth.Auth())
-	private.GET("/", rootHandler)
+	private.GET("/", apiHandler)
 	private.GET("/info", userInfoHandler)
-	private.GET("/api", func(ctx *gin.Context) {
-		session := sessions.Default(ctx)
-		fmt.Println("API SESSION user:", session.Get("user"))
-		fmt.Println("API SESSION username:", session.Get("username"))
-		fmt.Println("API SESSION userid:", session.Get("userid"))
-		ctx.JSON(200, gin.H{"message": "Hello from private for groups"})
-	})
+	private.GET("/api", apiHandler)
 
 	router.Run("127.0.0.1:4000")
+}
+
+func apiHandler(ctx *gin.Context) {
+	session := sessions.Default(ctx)
+	fmt.Println("API SESSION state:", session.Get("state"))
+	fmt.Println("API SESSION user:", session.Get("user"))
+	fmt.Println("API SESSION username:", session.Get("username"))
+	fmt.Println("API SESSION userid:", session.Get("userid"))
+	fmt.Println("API SESSION blah:", session.Get("blah"))
+	ctx.JSON(200, gin.H{"message": "Hello from private for groups"})
 }
 
 func userInfoHandler(ctx *gin.Context) {
@@ -92,23 +96,23 @@ func userInfoHandler(ctx *gin.Context) {
 	// }
 }
 
-func authDefault(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "Auth successful.")
-}
+// func authDefault(ctx *gin.Context) {
+// 	ctx.String(http.StatusOK, "Auth successful.")
+// }
 
-func googleLoginHandler(ctx *gin.Context) {
-	state := randToken()
-	session := sessions.Default(ctx)
-	session.Set("state", state)
-	session.Save()
-	ctx.Writer.Write([]byte("<html><title>Golang Google</title> <body> <h3>Login</h3> <a href='" + googleauth.GetLoginURL(state) + "'><button>Login with Google!</button> </a> </body></html>"))
-}
+// func googleLoginHandler(ctx *gin.Context) {
+// 	state := randToken()
+// 	session := sessions.Default(ctx)
+// 	session.Set("state", state)
+// 	session.Save()
+// 	ctx.Writer.Write([]byte("<html><title>Golang Google</title> <body> <h3>Login</h3> <a href='" + googleauth.GetLoginURL(state) + "'><button>Login with Google!</button> </a> </body></html>"))
+// }
 
-func randToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.StdEncoding.EncodeToString(b)
-}
+// func randToken() string {
+// 	b := make([]byte, 32)
+// 	rand.Read(b)
+// 	return base64.StdEncoding.EncodeToString(b)
+// }
 
 func rootHandler(ctx *gin.Context) {
 	// cuser, cusererr := ctx.Cookie("user")

@@ -119,10 +119,10 @@ func Auth() gin.HandlerFunc {
 		// Handle the exchange code to initiate a transport.
 		session := sessions.Default(ctx)
 		retrievedState := session.Get("state")
-		fmt.Println("AUTH: RETRIEVED STATE:", retrievedState)
-		fmt.Println("AUTH: SESSION username:", session.Get("username"))
-		fmt.Println("AUTH: SESSION userid:", session.Get("userid"))
-		fmt.Println("AUTH: SESSION blah:", session.Get("blah"))
+		fmt.Println("BEFORE AUTH: RETRIEVED STATE:", retrievedState)
+		fmt.Println("BEFORE AUTH: SESSION username:", session.Get("username"))
+		fmt.Println("BEFORE AUTH: SESSION userid:", session.Get("userid"))
+		fmt.Println("BEFORE AUTH: SESSION blah:", session.Get("blah"))
 
 		// cuser, cusererr := ctx.Cookie("user")
 		// fmt.Println("AUTH: COOKIE USER:", cuser)
@@ -181,9 +181,14 @@ func Auth() gin.HandlerFunc {
 		session.Set("blah", "blah1")
 		session.Save()
 
+		fmt.Println("AFTER AUTH SESSION state:", session.Get("state"))
 		fmt.Println("AFTER AUTH SESSION user:", session.Get("user"))
 		fmt.Println("AFTER AUTH SESSION userid:", session.Get("userid"))
 		fmt.Println("AFTER AUTH SESSION username:", session.Get("username"))
+		fmt.Println("AFTER AUTH SESSION blah:", session.Get("blah"))
+
+		session.Set("blah", "blah2")
+		session.Save()
 		fmt.Println("AFTER AUTH SESSION blah:", session.Get("blah"))
 
 		ctx.SetCookie("user", user.Email, 300, "/", "127.0.0.1", false, true)
