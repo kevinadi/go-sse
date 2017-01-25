@@ -18,6 +18,8 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	"Go-sse/seccookie"
 )
 
 // Credentials stores google client-ids.
@@ -46,55 +48,7 @@ var state string
 
 var store sessions.CookieStore
 
-var hashKey = []byte("very-secret")
-var blockKey = []byte("a-lot-secret-123")
-var scookie = securecookie.New(hashKey, blockKey)
-var appName = "Go-sse"
-
-func StoreSecureCookie(ctx *gin.Context, vals map[string]string, scookie *securecookie.SecureCookie) {
-	appName := "Go-sse-secure"
-
-	cookieEncoded, encErr := scookie.Encode(appName, vals)
-	if encErr != nil {
-		fmt.Println("Cookie encoding error:", encErr)
-	}
-
-	cookieStruct := &http.Cookie{
-		Name:  appName,
-		Value: cookieEncoded,
-		Path:  "/",
-	}
-
-	http.SetCookie(ctx.Writer, cookieStruct)
-}
-
-func ReadSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) map[string]string {
-	appName := "Go-sse-secure"
-	value := make(map[string]string)
-
-	cookie, err := ctx.Request.Cookie(appName)
-	if err != nil {
-		glog.Errorln("Error fetching cookie:", err)
-	}
-
-	err = scookie.Decode(appName, cookie.Value, &value)
-	if err != nil {
-		glog.Errorln("Error decoding cookie:", err)
-	}
-
-	return value
-}
-
-func DeleteSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) {
-	appName := "Go-sse-secure"
-	cookieStruct := &http.Cookie{
-		Name:   appName,
-		Value:  "",
-		Path:   "/",
-		MaxAge: 0,
-	}
-	http.SetCookie(ctx.Writer, cookieStruct)
-}
+var scookie = securecookie.New(seccookie.HashKey, seccookie.BlockKey)
 
 func randToken() string {
 	b := make([]byte, 32)
@@ -102,24 +56,6 @@ func randToken() string {
 	return base64.StdEncoding.EncodeToString(b)
 }
 
-// Setup the authorization path
-// func Setup(redirectURL, credFile string, scopes []string, secret []byte) {
-// 	store = sessions.NewCookieStore(secret)
-// 	var c Credentials
-// 	file, err := ioutil.ReadFile(credFile)
-// 	if err != nil {
-// 		glog.Fatalf("[Gin-OAuth] File error: %v\n", err)
-// 	}
-// 	json.Unmarshal(file, &c)
-
-// 	conf = &oauth2.Config{
-// 		ClientID:     c.ClientID,
-// 		ClientSecret: c.ClientSecret,
-// 		RedirectURL:  redirectURL,
-// 		Scopes:       scopes,
-// 		Endpoint:     google.Endpoint,
-// 	}
-// }
 func Setup(redirectURL, credFile string, scopes []string) {
 	var c Credentials
 	file, err := ioutil.ReadFile(credFile)
@@ -136,11 +72,6 @@ func Setup(redirectURL, credFile string, scopes []string) {
 		Endpoint:     google.Endpoint,
 	}
 }
-
-// func Session(name string) gin.HandlerFunc {
-// 	store := sessions.NewCookieStore([]byte("secret"))
-// 	return sessions.Sessions(name, store)
-// }
 
 func LoginHandler(ctx *gin.Context) {
 	state = randToken()
@@ -176,11 +107,6 @@ func Auth() gin.HandlerFunc {
 		fmt.Println("BEFORE AUTH: SESSION userid:", session.Get("userid"))
 		fmt.Println("BEFORE AUTH: SESSION blah:", session.Get("blah"))
 
-		// cuser, cusererr := ctx.Cookie("user")
-		// fmt.Println("AUTH: COOKIE USER:", cuser)
-		// if cusererr == nil {
-		// 	return
-		// }
 		if session.Get("userid") != nil {
 			return
 		}
@@ -252,14 +178,12 @@ func Auth() gin.HandlerFunc {
 
 func CheckAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		value := ReadSecureCookie(ctx, scookie)
+		value := seccookie.ReadSecureCookie(ctx, scookie)
 		for k, v := range value {
 			fmt.Println("CHECK AUTH securecookie:", k, v)
 		}
 		if value["Email"] == "" {
 			glog.Errorln("CHECK AUTH: not logged in")
-			// ctx.JSON(http.StatusNotFound, gin.H{"status": 404})
-			// ctx.Redirect(http.StatusTemporaryRedirect, "/auth/login")
 		}
 		ctx.Next()
 	}
@@ -274,11 +198,6 @@ func DoAuth(ctx *gin.Context) {
 	fmt.Println("BEFORE AUTH: SESSION userid:", session.Get("userid"))
 	fmt.Println("BEFORE AUTH: SESSION blah:", session.Get("blah"))
 
-	// cuser, cusererr := ctx.Cookie("user")
-	// fmt.Println("AUTH: COOKIE USER:", cuser)
-	// if cusererr == nil {
-	// 	return
-	// }
 	if session.Get("userid") != nil {
 		return
 	}
@@ -291,7 +210,6 @@ func DoAuth(ctx *gin.Context) {
 	fmt.Println("CTX KEYS:", ctxKeys)
 
 	if retrievedState != ctx.Query("state") {
-		ctx.String(http.StatusUnauthorized, "Not logged in")
 		ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("Invalid session state: %s", retrievedState))
 		return
 	}
@@ -351,7 +269,7 @@ func DoAuth(ctx *gin.Context) {
 		"Sub":       user.Sub,
 		"Profile":   user.Profile,
 	}
-	StoreSecureCookie(ctx, vals, scookie)
+	seccookie.StoreSecureCookie(ctx, vals, scookie)
 
 	ctx.String(http.StatusOK, "Hello %s %s", user.Name, user.Email)
 }

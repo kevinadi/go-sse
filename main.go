@@ -11,18 +11,14 @@ import (
 	"gopkg.in/gin-gonic/gin.v1"
 
 	"Go-sse/googleauth"
+	"Go-sse/seccookie"
 
 	"github.com/gorilla/securecookie"
 )
 
 var redirectURL, credFile string
 
-var hashKey = []byte("very-secret")
-var blockKey = []byte("a-lot-secret-123")
-var scookie = securecookie.New(hashKey, blockKey)
-var appName = "Go-sse"
-
-// var store = sessions.NewCookieStore([]byte("secret"))
+var scookie = securecookie.New(seccookie.HashKey, seccookie.BlockKey)
 
 func init() {
 	bin := path.Base(os.Args[0])
@@ -71,7 +67,7 @@ func main() {
 }
 
 func logoutHandler(ctx *gin.Context) {
-	googleauth.DeleteSecureCookie(ctx, scookie)
+	seccookie.DeleteSecureCookie(ctx, scookie)
 	ctx.JSON(200, gin.H{"logout": true})
 }
 
@@ -114,7 +110,7 @@ func userInfoHandler(ctx *gin.Context) {
 // }
 
 func rootHandler(ctx *gin.Context) {
-	vals := googleauth.ReadSecureCookie(ctx, scookie)
+	vals := seccookie.ReadSecureCookie(ctx, scookie)
 	output := "Hello unknown person"
 	if len(vals) > 0 {
 		output = fmt.Sprintf("Hello %s %s", vals["Name"], vals["Email"])
