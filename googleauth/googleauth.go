@@ -51,37 +51,49 @@ var blockKey = []byte("a-lot-secret-123")
 var scookie = securecookie.New(hashKey, blockKey)
 var appName = "Go-sse"
 
-func StoreSecureCookie(ctx *gin.Context, vals map[string]string) {
+func StoreSecureCookie(ctx *gin.Context, vals map[string]string, scookie *securecookie.SecureCookie) {
 	appName := "Go-sse-secure"
+
 	cookieEncoded, encErr := scookie.Encode(appName, vals)
 	if encErr != nil {
 		fmt.Println("Cookie encoding error:", encErr)
 	}
+
 	cookieStruct := &http.Cookie{
 		Name:  appName,
 		Value: cookieEncoded,
 		Path:  "/",
 	}
+
 	http.SetCookie(ctx.Writer, cookieStruct)
 }
 
-func ReadSecureCookie(ctx *gin.Context) map[string]string {
+func ReadSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) map[string]string {
 	appName := "Go-sse-secure"
 	value := make(map[string]string)
-	if cookie, err := ctx.Request.Cookie(appName); err == nil {
-		if err = scookie.Decode(appName, cookie.Value, &value); err == nil {
-			fmt.Printf("The value of username is %q\n", value["username"])
-			// for k, v := range value {
-			// 	fmt.Println(k, v)
-			// }
-		}
+
+	cookie, err := ctx.Request.Cookie(appName)
+	if err != nil {
+		glog.Errorln("Error fetching cookie:", err)
 	}
+
+	err = scookie.Decode(appName, cookie.Value, &value)
+	if err != nil {
+		glog.Errorln("Error decoding cookie:", err)
+	}
+
 	return value
 }
 
-func DeleteSecureCookie(ctx *gin.Context) {
-	vals := make(map[string]string)
-	StoreSecureCookie(ctx, vals)
+func DeleteSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) {
+	appName := "Go-sse-secure"
+	cookieStruct := &http.Cookie{
+		Name:   appName,
+		Value:  "",
+		Path:   "/",
+		MaxAge: 0,
+	}
+	http.SetCookie(ctx.Writer, cookieStruct)
 }
 
 func randToken() string {
@@ -240,16 +252,15 @@ func Auth() gin.HandlerFunc {
 
 func CheckAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		value := ReadSecureCookie(ctx)
+		value := ReadSecureCookie(ctx, scookie)
 		for k, v := range value {
 			fmt.Println("CHECK AUTH securecookie:", k, v)
 		}
-		session := sessions.Default(ctx)
-		fmt.Println("CHECK AUTH: session:", session)
-		fmt.Println("CHECK AUTH: RETRIEVED STATE:", session.Get("retrievedState"))
-		fmt.Println("CHECK AUTH: SESSION username:", session.Get("username"))
-		fmt.Println("CHECK AUTH: SESSION userid:", session.Get("userid"))
-		fmt.Println("CHECK AUTH: SESSION blah:", session.Get("blah"))
+		if value["Email"] == "" {
+			glog.Errorln("CHECK AUTH: not logged in")
+			// ctx.JSON(http.StatusNotFound, gin.H{"status": 404})
+			// ctx.Redirect(http.StatusTemporaryRedirect, "/auth/login")
+		}
 		ctx.Next()
 	}
 }
@@ -340,7 +351,7 @@ func DoAuth(ctx *gin.Context) {
 		"Sub":       user.Sub,
 		"Profile":   user.Profile,
 	}
-	StoreSecureCookie(ctx, vals)
+	StoreSecureCookie(ctx, vals, scookie)
 
 	ctx.String(http.StatusOK, "Hello %s %s", user.Name, user.Email)
 }

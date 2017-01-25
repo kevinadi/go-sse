@@ -19,7 +19,7 @@ var redirectURL, credFile string
 
 var hashKey = []byte("very-secret")
 var blockKey = []byte("a-lot-secret-123")
-var cookie = securecookie.New(hashKey, blockKey)
+var scookie = securecookie.New(hashKey, blockKey)
 var appName = "Go-sse"
 
 // var store = sessions.NewCookieStore([]byte("secret"))
@@ -65,8 +65,14 @@ func main() {
 	private.GET("/", googleauth.DoAuth)
 	private.GET("/info", userInfoHandler)
 	private.GET("/api", apiHandler)
+	private.GET("/logout", logoutHandler)
 
 	router.Run("127.0.0.1:4000")
+}
+
+func logoutHandler(ctx *gin.Context) {
+	googleauth.DeleteSecureCookie(ctx, scookie)
+	ctx.JSON(200, gin.H{"logout": true})
 }
 
 func apiHandler(ctx *gin.Context) {
@@ -108,24 +114,10 @@ func userInfoHandler(ctx *gin.Context) {
 // }
 
 func rootHandler(ctx *gin.Context) {
-	// cuser, cusererr := ctx.Cookie("user")
-	// fmt.Println("ROOT COOKIE:", cuser)
-	// if cusererr == nil {
-	// 	ctx.String(http.StatusOK, "Hello %s", cuser)
-	// } else {
-	// 	ctx.String(http.StatusOK, "Hello unknown person")
-	// }
-
-	session := sessions.Default(ctx)
-	// user := session.Get("user")
-	username := session.Get("username")
-	userid := session.Get("userid")
-	ctx.String(http.StatusOK, "Hello %s %s", username, userid)
-
-	// fmt.Println("ROOT user", user)
-	fmt.Println("ROOTHANDLER ===")
-	fmt.Println("ROOT state", session.Get("state"))
-	fmt.Println("ROOT username", username)
-	fmt.Println("ROOT userid", userid)
-	fmt.Println("ROOT blah:", session.Get("blah"))
+	vals := googleauth.ReadSecureCookie(ctx, scookie)
+	output := "Hello unknown person"
+	if len(vals) > 0 {
+		output = fmt.Sprintf("Hello %s %s", vals["Name"], vals["Email"])
+	}
+	ctx.String(http.StatusOK, output)
 }
