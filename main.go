@@ -11,9 +11,16 @@ import (
 	"gopkg.in/gin-gonic/gin.v1"
 
 	"Go-sse/googleauth"
+
+	"github.com/gorilla/securecookie"
 )
 
 var redirectURL, credFile string
+
+var hashKey = []byte("very-secret")
+var blockKey = []byte("a-lot-secret-123")
+var cookie = securecookie.New(hashKey, blockKey)
+var appName = "Go-sse"
 
 // var store = sessions.NewCookieStore([]byte("secret"))
 
@@ -37,7 +44,7 @@ func main() {
 		"https://www.googleapis.com/auth/userinfo.email",
 		// You have to select your own scope from here -> https://developers.google.com/identity/protocols/googlescopes#google_sign-in
 	}
-	secret := []byte("secret")
+	// secret := []byte("secret")
 	sessionName := "Go-sse-x"
 
 	router := gin.Default()
@@ -46,7 +53,7 @@ func main() {
 	fmt.Println("Credfile:", credFile)
 
 	// router.Use(googleauth.Session(sessionName))
-	store := sessions.NewCookieStore(secret)
+	store := sessions.NewCookieStore([]byte("secret"))
 	router.Use(sessions.Sessions(sessionName, store))
 
 	router.GET("/", rootHandler)
@@ -54,8 +61,8 @@ func main() {
 
 	// protected url group
 	private := router.Group("/auth")
-	private.Use(googleauth.Auth())
-	private.GET("/", apiHandler)
+	private.Use(googleauth.CheckAuth())
+	private.GET("/", googleauth.DoAuth)
 	private.GET("/info", userInfoHandler)
 	private.GET("/api", apiHandler)
 
@@ -68,32 +75,18 @@ func apiHandler(ctx *gin.Context) {
 	fmt.Println("API SESSION user:", session.Get("user"))
 	fmt.Println("API SESSION username:", session.Get("username"))
 	fmt.Println("API SESSION userid:", session.Get("userid"))
-	fmt.Println("API SESSION blah:", session.Get("blah"))
+	fmt.Println("API SESSION blah:", session)
 	ctx.JSON(200, gin.H{"message": "Hello from private for groups"})
 }
 
 func userInfoHandler(ctx *gin.Context) {
 	session := sessions.Default(ctx)
-	// ctxuser, _ := ctx.Get("user")
-	// fmt.Println("CTX user:", ctxuser)
+	fmt.Println("USERINFO SESSION state:", session.Get("state"))
 	fmt.Println("USERINFO SESSION user:", session.Get("user"))
 	fmt.Println("USERINFO SESSION userid:", session.Get("userid"))
 	fmt.Println("USERINFO SESSION username:", session.Get("username"))
-	fmt.Println("USERINFO SESSION blah:", session.Get("blah"))
-
-	// user, _ := ctx.GetCookie("user")
-	// fmt.Println("USERINFO COOKIE:", user)
-
-	// user := ctx.MustGet("user")
-	// if user != nil {
-
-	// userinfo := ctxuser.(googleauth.User)
+	fmt.Println("USERINFO SESSION blah:", session)
 	ctx.JSON(http.StatusOK, gin.H{"Hello": "from private info", "user": session.Get("username")})
-
-	// ctx.JSON(http.StatusOK, gin.H{"Hello": "from private", "user": ctx.MustGet("user").(googleauth.User), "Ctx Keys:": ctx.Keys})
-	// } else {
-	// 	ctx.String(http.StatusOK, "Please login")
-	// }
 }
 
 // func authDefault(ctx *gin.Context) {

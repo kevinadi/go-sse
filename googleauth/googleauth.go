@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/golang/glog"
+	"github.com/gorilla/securecookie"
 	"gopkg.in/gin-gonic/gin.v1"
 
 	"golang.org/x/oauth2"
@@ -43,7 +44,45 @@ var cred Credentials
 var conf *oauth2.Config
 var state string
 
-// var store sessions.CookieStore
+var store sessions.CookieStore
+
+var hashKey = []byte("very-secret")
+var blockKey = []byte("a-lot-secret-123")
+var scookie = securecookie.New(hashKey, blockKey)
+var appName = "Go-sse"
+
+func StoreSecureCookie(ctx *gin.Context, vals map[string]string) {
+	appName := "Go-sse-secure"
+	cookieEncoded, encErr := scookie.Encode(appName, vals)
+	if encErr != nil {
+		fmt.Println("Cookie encoding error:", encErr)
+	}
+	cookieStruct := &http.Cookie{
+		Name:  appName,
+		Value: cookieEncoded,
+		Path:  "/",
+	}
+	http.SetCookie(ctx.Writer, cookieStruct)
+}
+
+func ReadSecureCookie(ctx *gin.Context) map[string]string {
+	appName := "Go-sse-secure"
+	value := make(map[string]string)
+	if cookie, err := ctx.Request.Cookie(appName); err == nil {
+		if err = scookie.Decode(appName, cookie.Value, &value); err == nil {
+			fmt.Printf("The value of username is %q\n", value["username"])
+			// for k, v := range value {
+			// 	fmt.Println(k, v)
+			// }
+		}
+	}
+	return value
+}
+
+func DeleteSecureCookie(ctx *gin.Context) {
+	vals := make(map[string]string)
+	StoreSecureCookie(ctx, vals)
+}
 
 func randToken() string {
 	b := make([]byte, 32)
@@ -87,6 +126,7 @@ func Setup(redirectURL, credFile string, scopes []string) {
 }
 
 // func Session(name string) gin.HandlerFunc {
+// 	store := sessions.NewCookieStore([]byte("secret"))
 // 	return sessions.Sessions(name, store)
 // }
 
@@ -194,4 +234,113 @@ func Auth() gin.HandlerFunc {
 		ctx.SetCookie("user", user.Email, 300, "/", "127.0.0.1", false, true)
 
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+func CheckAuth() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		value := ReadSecureCookie(ctx)
+		for k, v := range value {
+			fmt.Println("CHECK AUTH securecookie:", k, v)
+		}
+		session := sessions.Default(ctx)
+		fmt.Println("CHECK AUTH: session:", session)
+		fmt.Println("CHECK AUTH: RETRIEVED STATE:", session.Get("retrievedState"))
+		fmt.Println("CHECK AUTH: SESSION username:", session.Get("username"))
+		fmt.Println("CHECK AUTH: SESSION userid:", session.Get("userid"))
+		fmt.Println("CHECK AUTH: SESSION blah:", session.Get("blah"))
+		ctx.Next()
+	}
+}
+
+func DoAuth(ctx *gin.Context) {
+	// Handle the exchange code to initiate a transport.
+	session := sessions.Default(ctx)
+	retrievedState := session.Get("state")
+	fmt.Println("BEFORE AUTH: RETRIEVED STATE:", retrievedState)
+	fmt.Println("BEFORE AUTH: SESSION username:", session.Get("username"))
+	fmt.Println("BEFORE AUTH: SESSION userid:", session.Get("userid"))
+	fmt.Println("BEFORE AUTH: SESSION blah:", session.Get("blah"))
+
+	// cuser, cusererr := ctx.Cookie("user")
+	// fmt.Println("AUTH: COOKIE USER:", cuser)
+	// if cusererr == nil {
+	// 	return
+	// }
+	if session.Get("userid") != nil {
+		return
+	}
+
+	sessionUserID := session.Get("userid")
+	fmt.Println("SESSION USER ID:", sessionUserID)
+	sessionUser := session.Get("user")
+	fmt.Println("SESSION USER:", sessionUser)
+	ctxKeys := ctx.Keys
+	fmt.Println("CTX KEYS:", ctxKeys)
+
+	if retrievedState != ctx.Query("state") {
+		ctx.String(http.StatusUnauthorized, "Not logged in")
+		ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("Invalid session state: %s", retrievedState))
+		return
+	}
+
+	tok, err := conf.Exchange(oauth2.NoContext, ctx.Query("code"))
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	client := conf.Client(oauth2.NoContext, tok)
+	email, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	defer email.Body.Close()
+	data, err := ioutil.ReadAll(email.Body)
+	if err != nil {
+		glog.Errorf("[Gin-OAuth] Could not read Body: %s", err)
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	var user User
+	err = json.Unmarshal(data, &user)
+	if err != nil {
+		glog.Errorf("[Gin-OAuth] Unmarshal userinfo failed: %s", err)
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	// save userinfo, which could be used in Handlers
+	ctx.Set("user", user)
+	session.Set("user", user)
+	session.Set("username", user.Name)
+	session.Set("userid", user.Email)
+	session.Set("blah", "blah1")
+	session.Save()
+
+	ss := sessions.Default(ctx)
+	fmt.Println("AFTER AUTH SESSION state:", ss.Get("state"))
+	fmt.Println("AFTER AUTH SESSION user:", ss.Get("user"))
+	fmt.Println("AFTER AUTH SESSION userid:", ss.Get("userid"))
+	fmt.Println("AFTER AUTH SESSION username:", ss.Get("username"))
+	fmt.Println("AFTER AUTH SESSION blah:", ss.Get("blah"))
+
+	fmt.Println("AFTER AUTH session:", ss)
+
+	vals := map[string]string{
+		"Name":      user.Name,
+		"Email":     user.Email,
+		"Picture":   user.Picture,
+		"FirstName": user.GivenName,
+		"LastName":  user.FamilyName,
+		"Verified":  fmt.Sprintf("%v", user.EmailVerified),
+		"Gender":    user.Gender,
+		"Sub":       user.Sub,
+		"Profile":   user.Profile,
+	}
+	StoreSecureCookie(ctx, vals)
+
+	ctx.String(http.StatusOK, "Hello %s %s", user.Name, user.Email)
 }
