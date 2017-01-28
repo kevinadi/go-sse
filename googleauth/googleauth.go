@@ -149,15 +149,15 @@ func DoAuth(ctx *gin.Context) {
 	ctx.Set("user", user)
 
 	vals := map[string]string{
-		"Name":       user.Name,
-		"Email":      user.Email,
-		"Picture":    user.Picture,
-		"GivenName":  user.GivenName,
-		"FamilyName": user.FamilyName,
-		"Verified":   fmt.Sprintf("%v", user.EmailVerified),
-		"Gender":     user.Gender,
-		"Sub":        user.Sub,
-		"Profile":    user.Profile,
+		"Name":          user.Name,
+		"Email":         user.Email,
+		"Picture":       user.Picture,
+		"GivenName":     user.GivenName,
+		"FamilyName":    user.FamilyName,
+		"EmailVerified": fmt.Sprintf("%v", user.EmailVerified),
+		"Gender":        user.Gender,
+		"Sub":           user.Sub,
+		"Profile":       user.Profile,
 	}
 	seccookie.StoreSecureCookie(ctx, vals, scookie)
 
