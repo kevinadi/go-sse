@@ -74,7 +74,7 @@ func main() {
 
 func logoutHandler(ctx *gin.Context) {
 	seccookie.DeleteSecureCookie(ctx, scookie)
-	ctx.JSON(200, gin.H{"logout": true})
+	ctx.Redirect(http.StatusTemporaryRedirect, "/")
 }
 
 func apiHandler(ctx *gin.Context) {

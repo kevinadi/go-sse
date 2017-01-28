@@ -158,5 +158,6 @@ func DoAuth(ctx *gin.Context) {
 	}
 	seccookie.StoreSecureCookie(ctx, vals, scookie)
 
-	ctx.String(http.StatusOK, "Hello %s %s", user.Name, user.Email)
+	// Redirect to root after auth
+	ctx.Redirect(http.StatusTemporaryRedirect, "/")
 }
