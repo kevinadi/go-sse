@@ -15,7 +15,6 @@ class UserInfo extends React.Component {
     axios.get('/auth/info')
       .then(res => {
         this.setState({ userInfo: res.data });
-        console.log(this.state.userInfo)
       });
   }
 
