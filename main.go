@@ -51,7 +51,7 @@ func main() {
 	router.Use(sessions.Sessions(sessionName, store))
 
 	// static as root
-	router.Use(static.Serve("/", static.LocalFile("/static", false)))
+	router.Use(static.Serve("/", static.LocalFile("static", true)))
 
 	// login page
 	router.GET("/auth/login", googleauth.LoginHandler)
