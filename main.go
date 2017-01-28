@@ -42,11 +42,16 @@ func main() {
 	}
 	sessionName := "Go-sse"
 
-	router := gin.Default()
+	router := gin.New()
+
+	// Global middleware
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
+
 	// init settings for google auth
 	googleauth.Setup(redirectURL, credFile, scopes)
-	fmt.Println("Credfile:", credFile)
 
+	// Session middleware
 	store := sessions.NewCookieStore([]byte("secret"))
 	router.Use(sessions.Sessions(sessionName, store))
 
