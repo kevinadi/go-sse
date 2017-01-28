@@ -40,8 +40,7 @@ func main() {
 		"https://www.googleapis.com/auth/userinfo.email",
 		// You have to select your own scope from here -> https://developers.google.com/identity/protocols/googlescopes#google_sign-in
 	}
-	// secret := []byte("secret")
-	sessionName := "Go-sse-x"
+	sessionName := "Go-sse"
 
 	router := gin.Default()
 	// init settings for google auth
@@ -72,47 +71,27 @@ func logoutHandler(ctx *gin.Context) {
 }
 
 func apiHandler(ctx *gin.Context) {
-	session := sessions.Default(ctx)
-	fmt.Println("API SESSION state:", session.Get("state"))
-	fmt.Println("API SESSION user:", session.Get("user"))
-	fmt.Println("API SESSION username:", session.Get("username"))
-	fmt.Println("API SESSION userid:", session.Get("userid"))
-	fmt.Println("API SESSION blah:", session)
-	ctx.JSON(200, gin.H{"message": "Hello from private for groups"})
+	vals, err := seccookie.ReadSecureCookie(ctx, scookie)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
+	} else {
+		ctx.JSON(200, gin.H{"message": "Hello from private for groups", "user": vals["Email"], "name": vals["Name"]})
+	}
 }
 
 func userInfoHandler(ctx *gin.Context) {
-	session := sessions.Default(ctx)
-	fmt.Println("USERINFO SESSION state:", session.Get("state"))
-	fmt.Println("USERINFO SESSION user:", session.Get("user"))
-	fmt.Println("USERINFO SESSION userid:", session.Get("userid"))
-	fmt.Println("USERINFO SESSION username:", session.Get("username"))
-	fmt.Println("USERINFO SESSION blah:", session)
-	ctx.JSON(http.StatusOK, gin.H{"Hello": "from private info", "user": session.Get("username")})
+	vals, err := seccookie.ReadSecureCookie(ctx, scookie)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
+	} else {
+		ctx.JSON(http.StatusOK, gin.H{"Hello": "from private info", "user": vals["Email"], "name": vals["Name"]})
+	}
 }
 
-// func authDefault(ctx *gin.Context) {
-// 	ctx.String(http.StatusOK, "Auth successful.")
-// }
-
-// func googleLoginHandler(ctx *gin.Context) {
-// 	state := randToken()
-// 	session := sessions.Default(ctx)
-// 	session.Set("state", state)
-// 	session.Save()
-// 	ctx.Writer.Write([]byte("<html><title>Golang Google</title> <body> <h3>Login</h3> <a href='" + googleauth.GetLoginURL(state) + "'><button>Login with Google!</button> </a> </body></html>"))
-// }
-
-// func randToken() string {
-// 	b := make([]byte, 32)
-// 	rand.Read(b)
-// 	return base64.StdEncoding.EncodeToString(b)
-// }
-
 func rootHandler(ctx *gin.Context) {
-	vals := seccookie.ReadSecureCookie(ctx, scookie)
 	output := "Hello unknown person"
-	if len(vals) > 0 {
+	vals, err := seccookie.ReadSecureCookie(ctx, scookie)
+	if err == nil {
 		output = fmt.Sprintf("Hello %s %s", vals["Name"], vals["Email"])
 	}
 	ctx.String(http.StatusOK, output)

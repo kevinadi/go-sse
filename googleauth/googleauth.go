@@ -86,104 +86,14 @@ func GetLoginURL(state string) string {
 	return conf.AuthCodeURL(state)
 }
 
-// Auth is the google authorization middleware. You can use them to protect a routergroup.
-// Example:
-//
-//        private.Use(google.Auth())
-//        private.GET("/", UserInfoHandler)
-//        private.GET("/api", func(ctx *gin.Context) {
-//            ctx.JSON(200, gin.H{"message": "Hello from private for groups"})
-//        })
-//    func UserInfoHandler(ctx *gin.Context) {
-//        ctx.JSON(http.StatusOK, gin.H{"Hello": "from private", "user": ctx.MustGet("user").(google.User)})
-//    }
-func Auth() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		// Handle the exchange code to initiate a transport.
-		session := sessions.Default(ctx)
-		retrievedState := session.Get("state")
-		fmt.Println("BEFORE AUTH: RETRIEVED STATE:", retrievedState)
-		fmt.Println("BEFORE AUTH: SESSION username:", session.Get("username"))
-		fmt.Println("BEFORE AUTH: SESSION userid:", session.Get("userid"))
-		fmt.Println("BEFORE AUTH: SESSION blah:", session.Get("blah"))
-
-		if session.Get("userid") != nil {
-			return
-		}
-
-		sessionUserID := session.Get("userid")
-		fmt.Println("SESSION USER ID:", sessionUserID)
-		sessionUser := session.Get("user")
-		fmt.Println("SESSION USER:", sessionUser)
-		ctxKeys := ctx.Keys
-		fmt.Println("CTX KEYS:", ctxKeys)
-
-		if retrievedState != ctx.Query("state") {
-			ctx.String(http.StatusUnauthorized, "Not logged in")
-			ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("Invalid session state: %s", retrievedState))
-			return
-		}
-
-		tok, err := conf.Exchange(oauth2.NoContext, ctx.Query("code"))
-		if err != nil {
-			ctx.AbortWithError(http.StatusBadRequest, err)
-			return
-		}
-
-		client := conf.Client(oauth2.NoContext, tok)
-		email, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
-		if err != nil {
-			ctx.AbortWithError(http.StatusBadRequest, err)
-			return
-		}
-		defer email.Body.Close()
-		data, err := ioutil.ReadAll(email.Body)
-		if err != nil {
-			glog.Errorf("[Gin-OAuth] Could not read Body: %s", err)
-			ctx.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-
-		var user User
-		err = json.Unmarshal(data, &user)
-		if err != nil {
-			glog.Errorf("[Gin-OAuth] Unmarshal userinfo failed: %s", err)
-			ctx.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		// save userinfo, which could be used in Handlers
-		ctx.Set("user", user)
-		session.Set("user", user)
-		session.Set("username", user.Name)
-		session.Set("userid", user.Email)
-		session.Set("blah", "blah1")
-		session.Save()
-
-		fmt.Println("AFTER AUTH SESSION state:", session.Get("state"))
-		fmt.Println("AFTER AUTH SESSION user:", session.Get("user"))
-		fmt.Println("AFTER AUTH SESSION userid:", session.Get("userid"))
-		fmt.Println("AFTER AUTH SESSION username:", session.Get("username"))
-		fmt.Println("AFTER AUTH SESSION blah:", session.Get("blah"))
-
-		session.Set("blah", "blah2")
-		session.Save()
-		fmt.Println("AFTER AUTH SESSION blah:", session.Get("blah"))
-
-		ctx.SetCookie("user", user.Email, 300, "/", "127.0.0.1", false, true)
-
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-
 func CheckAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		value := seccookie.ReadSecureCookie(ctx, scookie)
+		value, err := seccookie.ReadSecureCookie(ctx, scookie)
+		if err != nil {
+			glog.Errorln("CHECK AUTH: not logged in")
+		}
 		for k, v := range value {
 			fmt.Println("CHECK AUTH securecookie:", k, v)
-		}
-		if value["Email"] == "" {
-			glog.Errorln("CHECK AUTH: not logged in")
 		}
 		ctx.Next()
 	}
@@ -193,21 +103,10 @@ func DoAuth(ctx *gin.Context) {
 	// Handle the exchange code to initiate a transport.
 	session := sessions.Default(ctx)
 	retrievedState := session.Get("state")
-	fmt.Println("BEFORE AUTH: RETRIEVED STATE:", retrievedState)
-	fmt.Println("BEFORE AUTH: SESSION username:", session.Get("username"))
-	fmt.Println("BEFORE AUTH: SESSION userid:", session.Get("userid"))
-	fmt.Println("BEFORE AUTH: SESSION blah:", session.Get("blah"))
 
 	if session.Get("userid") != nil {
 		return
 	}
-
-	sessionUserID := session.Get("userid")
-	fmt.Println("SESSION USER ID:", sessionUserID)
-	sessionUser := session.Get("user")
-	fmt.Println("SESSION USER:", sessionUser)
-	ctxKeys := ctx.Keys
-	fmt.Println("CTX KEYS:", ctxKeys)
 
 	if retrievedState != ctx.Query("state") {
 		ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("Invalid session state: %s", retrievedState))
@@ -243,20 +142,6 @@ func DoAuth(ctx *gin.Context) {
 	}
 	// save userinfo, which could be used in Handlers
 	ctx.Set("user", user)
-	session.Set("user", user)
-	session.Set("username", user.Name)
-	session.Set("userid", user.Email)
-	session.Set("blah", "blah1")
-	session.Save()
-
-	ss := sessions.Default(ctx)
-	fmt.Println("AFTER AUTH SESSION state:", ss.Get("state"))
-	fmt.Println("AFTER AUTH SESSION user:", ss.Get("user"))
-	fmt.Println("AFTER AUTH SESSION userid:", ss.Get("userid"))
-	fmt.Println("AFTER AUTH SESSION username:", ss.Get("username"))
-	fmt.Println("AFTER AUTH SESSION blah:", ss.Get("blah"))
-
-	fmt.Println("AFTER AUTH session:", ss)
 
 	vals := map[string]string{
 		"Name":      user.Name,

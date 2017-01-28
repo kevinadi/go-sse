@@ -31,21 +31,23 @@ func StoreSecureCookie(ctx *gin.Context, vals map[string]string, scookie *secure
 	http.SetCookie(ctx.Writer, cookieStruct)
 }
 
-func ReadSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) map[string]string {
+func ReadSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) (map[string]string, error) {
 	appName := "Go-sse-secure"
 	value := make(map[string]string)
 
 	cookie, err := ctx.Request.Cookie(appName)
 	if err != nil {
 		glog.Errorln("Error fetching cookie:", err)
+		return value, err
 	}
 
 	err = scookie.Decode(appName, cookie.Value, &value)
 	if err != nil {
 		glog.Errorln("Error decoding cookie:", err)
+		return value, err
 	}
 
-	return value
+	return value, nil
 }
 
 func DeleteSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) {
