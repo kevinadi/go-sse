@@ -81,7 +81,17 @@ func LoginHandler(ctx *gin.Context) {
 	session.Set("state", state)
 	session.Save()
 	fmt.Println("LOGIN SESSION:", session.Get("userid"))
-	ctx.Writer.Write([]byte("<html><title>Golang Google</title> <body> <h3>Hello!</h3> <a href='" + GetLoginURL(state) + "'><button>Login with Google!</button> </a> </body></html>"))
+	// TODO create this page from a template
+	loginPage := fmt.Sprintf(`
+	<html>
+	<title>Google Login</title>
+	<body>
+	<h3>Google Login</h3>
+	<a href="%s"><button>Login with Google</button></a>
+	</body>
+	</html>
+	`, GetLoginURL(state))
+	ctx.Writer.Write([]byte(loginPage))
 }
 
 // GetLoginURL gets the google login page
