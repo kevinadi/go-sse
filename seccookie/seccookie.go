@@ -28,6 +28,7 @@ func init() {
 	json.Unmarshal(file, &CookieKey)
 }
 
+// StoreSecureCookie stores the secure cookie
 func StoreSecureCookie(ctx *gin.Context, vals map[string]string, scookie *securecookie.SecureCookie) {
 	appName := "Go-sse-secure"
 
@@ -46,6 +47,7 @@ func StoreSecureCookie(ctx *gin.Context, vals map[string]string, scookie *secure
 	http.SetCookie(ctx.Writer, cookieStruct)
 }
 
+// ReadSecureCookie reads & decrypts the secure cookie
 func ReadSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) (map[string]string, error) {
 	appName := "Go-sse-secure"
 	value := make(map[string]string)
@@ -65,6 +67,7 @@ func ReadSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) (map
 	return value, nil
 }
 
+// DeleteSecureCookie removes the secure cookie
 func DeleteSecureCookie(ctx *gin.Context, scookie *securecookie.SecureCookie) {
 	appName := "Go-sse-secure"
 	cookieStruct := &http.Cookie{

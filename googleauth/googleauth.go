@@ -56,6 +56,7 @@ func randToken() string {
 	return base64.StdEncoding.EncodeToString(b)
 }
 
+// Setup sets up the OAuth2 parameters
 func Setup(redirectURL, credFile string, scopes []string) {
 	var c Credentials
 	file, err := ioutil.ReadFile(credFile)
@@ -73,6 +74,7 @@ func Setup(redirectURL, credFile string, scopes []string) {
 	}
 }
 
+// LoginHandler displays the login page & redirects to google
 func LoginHandler(ctx *gin.Context) {
 	state = randToken()
 	session := sessions.Default(ctx)
@@ -82,10 +84,12 @@ func LoginHandler(ctx *gin.Context) {
 	ctx.Writer.Write([]byte("<html><title>Golang Google</title> <body> <h3>Hello!</h3> <a href='" + GetLoginURL(state) + "'><button>Login with Google!</button> </a> </body></html>"))
 }
 
+// GetLoginURL gets the google login page
 func GetLoginURL(state string) string {
 	return conf.AuthCodeURL(state)
 }
 
+// CheckAuth Gin handler function to check if a user is logged in
 func CheckAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		value, err := seccookie.ReadSecureCookie(ctx, scookie)
@@ -99,6 +103,7 @@ func CheckAuth() gin.HandlerFunc {
 	}
 }
 
+// DoAuth does the actual OAuth2 login procedure
 func DoAuth(ctx *gin.Context) {
 	// Handle the exchange code to initiate a transport.
 	session := sessions.Default(ctx)
