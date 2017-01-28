@@ -48,7 +48,7 @@ var state string
 
 var store sessions.CookieStore
 
-var scookie = securecookie.New(seccookie.HashKey, seccookie.BlockKey)
+var scookie = securecookie.New(seccookie.CookieKey.HashKey, seccookie.CookieKey.BlockKey)
 
 func randToken() string {
 	b := make([]byte, 32)

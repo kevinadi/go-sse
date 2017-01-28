@@ -1,7 +1,9 @@
 package seccookie
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/golang/glog"
@@ -9,9 +11,22 @@ import (
 	"gopkg.in/gin-gonic/gin.v1"
 )
 
-var HashKey = []byte("very-secret")
-var BlockKey = []byte("a-lot-secret-123")
-var appName = "Go-sse"
+// CookieKey defines secure cookie parameters
+var CookieKey struct {
+	AppName  string `json:"app_name"`
+	HashKey  []byte `json:"hash_key"`
+	BlockKey []byte `json:"block_key"`
+}
+
+var credFile = "cookie_secret.json"
+
+func init() {
+	file, err := ioutil.ReadFile(credFile)
+	if err != nil {
+		glog.Fatalf("[SecureCookie] File error: %v\n", err)
+	}
+	json.Unmarshal(file, &CookieKey)
+}
 
 func StoreSecureCookie(ctx *gin.Context, vals map[string]string, scookie *securecookie.SecureCookie) {
 	appName := "Go-sse-secure"

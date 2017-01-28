@@ -18,7 +18,7 @@ import (
 
 var redirectURL, credFile string
 
-var scookie = securecookie.New(seccookie.HashKey, seccookie.BlockKey)
+var scookie = securecookie.New(seccookie.CookieKey.HashKey, seccookie.CookieKey.BlockKey)
 
 func init() {
 	bin := path.Base(os.Args[0])
