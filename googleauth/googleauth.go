@@ -92,12 +92,9 @@ func GetLoginURL(state string) string {
 // CheckAuth Gin handler function to check if a user is logged in
 func CheckAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		value, err := seccookie.ReadSecureCookie(ctx, scookie)
+		_, err := seccookie.ReadSecureCookie(ctx, scookie)
 		if err != nil {
 			glog.Errorln("CHECK AUTH: not logged in")
-		}
-		for k, v := range value {
-			fmt.Println("CHECK AUTH securecookie:", k, v)
 		}
 		ctx.Next()
 	}
