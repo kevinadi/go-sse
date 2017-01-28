@@ -8,12 +8,12 @@ import (
 	"path"
 
 	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/static"
+	"github.com/gorilla/securecookie"
 	"gopkg.in/gin-gonic/gin.v1"
 
 	"Go-sse/googleauth"
 	"Go-sse/seccookie"
-
-	"github.com/gorilla/securecookie"
 )
 
 var redirectURL, credFile string
@@ -47,11 +47,13 @@ func main() {
 	googleauth.Setup(redirectURL, credFile, scopes)
 	fmt.Println("Credfile:", credFile)
 
-	// router.Use(googleauth.Session(sessionName))
 	store := sessions.NewCookieStore([]byte("secret"))
 	router.Use(sessions.Sessions(sessionName, store))
 
-	router.GET("/", rootHandler)
+	// static as root
+	router.Use(static.Serve("/", static.LocalFile("/static", false)))
+
+	// login page
 	router.GET("/auth/login", googleauth.LoginHandler)
 
 	// protected url group
@@ -84,7 +86,17 @@ func userInfoHandler(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
 	} else {
-		ctx.JSON(http.StatusOK, gin.H{"Hello": "from private info", "user": vals["Email"], "name": vals["Name"]})
+		ctx.JSON(
+			http.StatusOK,
+			gin.H{
+				"Name":          vals["Name"],
+				"GivenName":     vals["GivenName"],
+				"FamilyName":    vals["FamilyName"],
+				"Email":         vals["Email"],
+				"Picture":       vals["Picture"],
+				"Gender":        vals["Gender"],
+				"EmailVerified": vals["EmailVerified"],
+			})
 	}
 }
 
