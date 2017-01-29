@@ -29,7 +29,7 @@ Usage of %s
 `, bin)
 		flag.PrintDefaults()
 	}
-	flag.StringVar(&redirectURL, "redirect", "http://127.0.0.1:4000/auth/", "URL to be redirected to after authorization.")
+	flag.StringVar(&redirectURL, "redirect", "http://localhost:4000/auth/", "URL to be redirected to after authorization.")
 	flag.StringVar(&credFile, "cred-file", "./sse_secret.json", "Credential JSON file")
 }
 
@@ -69,7 +69,7 @@ func main() {
 	private.GET("/api", apiHandler)
 	private.GET("/logout", logoutHandler)
 
-	router.Run("127.0.0.1:4000")
+	router.Run("localhost:4000")
 }
 
 func logoutHandler(ctx *gin.Context) {
