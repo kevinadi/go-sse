@@ -7,6 +7,7 @@ This example is copied from https://gist.github.com/danawoodman/9cfddb1a0c934a35
 <html>
   <head>
     <meta charset="utf-8">
+    <meta name="google-signin-client_id" content="1080345690895-g3d7n00qmbgb3993kma3irntjiq6acbf.apps.googleusercontent.com">
     <title>React Hello World</title>
   </head>
   <body>
@@ -18,9 +19,14 @@ This example is copied from https://gist.github.com/danawoodman/9cfddb1a0c934a35
     This can be any element or tag name, just don't use `document.body`
     if you can avoid it.
     -->
+    <div class="g-signin2" data-onsuccess="onSignIn"></div>
+    <a href="#" onclick="signOut();">Sign out</a>
+
     <div id='root'></div>
 
     <div id="userinfo"></div>
+
+    <div id="userinfoclient"></div>
 
     <!--
     For ease of use, we are including the React, ReactDOM and Babel CDN
@@ -35,6 +41,7 @@ This example is copied from https://gist.github.com/danawoodman/9cfddb1a0c934a35
     <script src="https://fb.me/react-dom-15.0.1.js" type="text/javascript"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.23/browser.min.js" type="text/javascript"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.15.3/axios.min.js" type="text/javascript"></script>
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
 
     <!--
     This is where you link to your React code. Can be .js or .jsx
@@ -42,5 +49,22 @@ This example is copied from https://gist.github.com/danawoodman/9cfddb1a0c934a35
     -->
     <script src="basic.jsx" type="text/babel"></script>
     <script src="userinfo.jsx" type="text/babel"></script>
+    <script src="userinfoclient.jsx" type="text/babel"></script>
+
+    <script type="text/javascript">
+    function onSignIn(googleUser) {
+      var profile = googleUser.getBasicProfile();
+      console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.
+      console.log('Name: ' + profile.getName());
+      console.log('Image URL: ' + profile.getImageUrl());
+      console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
+    }
+    function signOut() {
+      var auth2 = gapi.auth2.getAuthInstance();
+      auth2.signOut().then(function () {
+        console.log('User signed out.');
+      });
+    }
+    </script>
   </body>
 </html>
